@@ -266,11 +266,24 @@ export class Port extends PrimitiveComponent<typeof portProps> {
 
     const port_hints = this.getNameAndAliases()
 
+    const parentSourceComponentId = this.parent?.source_component_id ?? null
+    const parentSourceGroupId =
+      parentSourceComponentId !== null
+        ? null
+        : this.getGroup()?.source_group_id ?? null
+
+    if (parentSourceComponentId === null && parentSourceGroupId === null) {
+      throw new Error(
+        `${this.getString()} has no parent source component or source group (parent: ${this.parent?.getString()})`,
+      )
+    }
+
     const source_port = db.source_port.insert({
       name: props.name!,
       pin_number: props.pinNumber,
       port_hints,
-      source_component_id: this.parent?.source_component_id!,
+      source_component_id: parentSourceComponentId ?? undefined,
+      source_group_id: parentSourceGroupId ?? undefined,
       subcircuit_id: this.getSubcircuit()?.subcircuit_id!,
     })
 
@@ -279,18 +292,26 @@ export class Port extends PrimitiveComponent<typeof portProps> {
 
   doInitialSourceParentAttachment(): void {
     const { db } = this.root!
-    if (!this.parent?.source_component_id) {
+    const parentSourceComponentId = this.parent?.source_component_id ?? null
+    const parentSourceGroupId =
+      parentSourceComponentId !== null
+        ? null
+        : this.getGroup()?.source_group_id ?? null
+
+    if (parentSourceComponentId === null && parentSourceGroupId === null) {
       throw new Error(
-        `${this.getString()} has no parent source component (parent: ${this.parent?.getString()})`,
+        `${this.getString()} has no parent source component or source group (parent: ${this.parent?.getString()})`,
       )
     }
 
     db.source_port.update(this.source_port_id!, {
-      source_component_id: this.parent?.source_component_id!,
+      source_component_id: parentSourceComponentId ?? undefined,
+      source_group_id: parentSourceGroupId ?? undefined,
       subcircuit_id: this.getSubcircuit()?.subcircuit_id!,
     })
 
-    this.source_component_id = this.parent?.source_component_id
+    this.source_component_id = parentSourceComponentId
+    this.source_group_id = parentSourceGroupId
   }
 
   doInitialPcbPortRender(): void {

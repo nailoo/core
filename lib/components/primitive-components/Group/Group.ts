@@ -36,6 +36,8 @@ import { Group_doInitialPcbLayoutFlex } from "./Group_doInitialPcbLayoutFlex"
 import { convertSrjToGraphicsObject } from "@tscircuit/capacity-autorouter"
 import type { GraphicsObject } from "graphics-debug"
 import { Group_doInitialSchematicTraceRender } from "./Group_doInitialSchematicTraceRender/Group_doInitialSchematicTraceRender"
+import { underscorifyPortArrangement } from "lib/soup/underscorifyPortArrangement"
+import { underscorifyPinStyles } from "lib/soup/underscorifyPinStyles"
 
 export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
   extends NormalComponent<Props>
@@ -52,10 +54,24 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
     output_pcb_traces?: (PcbTrace | PcbVia)[]
   } | null = null
 
+  private _shouldRenderGroupAsSchematicBox(): boolean {
+    const parsedShowAs = (this._parsedProps as SubcircuitGroupProps | undefined)
+      ?.showAsSchematicBox
+    if (parsedShowAs !== undefined) return Boolean(parsedShowAs)
+    const rawShowAs = (this.props as any)?.showAsSchematicBox
+    if (rawShowAs !== undefined) return Boolean(rawShowAs)
+    return false
+  }
+
+  isRenderedAsSchematicBox(): boolean {
+    return this._shouldRenderGroupAsSchematicBox()
+  }
+
   get config() {
     return {
       zodProps: groupProps as unknown as Props,
       componentName: "Group",
+      shouldRenderAsSchematicBox: this._shouldRenderGroupAsSchematicBox(),
     }
   }
 
@@ -64,6 +80,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
     const source_group = db.source_group.insert({
       name: this.name,
       is_subcircuit: this.isSubcircuit,
+      show_as_schematic_box: this._shouldRenderGroupAsSchematicBox() || undefined,
     })
     this.source_group_id = source_group.source_group_id
     if (this.isSubcircuit) {
@@ -170,6 +187,55 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
         center,
       })
     }
+  }
+
+  override initPorts(opts: {
+    additionalAliases?: Record<`pin${number}`, string[]>
+    pinCount?: number
+    ignoreSymbolPorts?: boolean
+  } = {}): void {
+    if (!this.isRenderedAsSchematicBox()) {
+      super.initPorts(opts)
+      return
+    }
+
+    if (this.root?.schematicDisabled) return
+
+    const props = this._parsedProps as SubcircuitGroupProps
+    const connectionEntries = Object.entries(props.connections ?? {})
+    if (connectionEntries.length === 0) {
+      super.initPorts(opts)
+      return
+    }
+
+    const pinLabels: Record<string, string | string[]> = {
+      ...(((this._parsedProps as any).pinLabels as
+        | Record<string, string | string[]>
+        | undefined) ?? {}),
+    }
+    const additionalAliases: Record<string, string[]> = {
+      ...(opts.additionalAliases ?? {}),
+    }
+
+    connectionEntries.forEach(([label], index) => {
+      const pinNumber = index + 1
+      const key = `pin${pinNumber}`
+      if (!pinLabels[key]) {
+        pinLabels[key] = label
+      }
+      additionalAliases[key] = Array.from(
+        new Set([...(additionalAliases[key] ?? []), key]),
+      )
+    })
+
+    ;(this._parsedProps as any).pinLabels = pinLabels
+
+    super.initPorts({
+      ...opts,
+      pinCount: connectionEntries.length,
+      ignoreSymbolPorts: true,
+      additionalAliases: additionalAliases as Record<`pin${number}`, string[]>,
+    })
   }
 
   unnamedElementCounter: Record<string, number> = {}
@@ -724,7 +790,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
   doInitialSchematicComponentRender() {
     if (this.root?.schematicDisabled) return
     const { db } = this.root!
-    const { _parsedProps: props } = this
+    const showAsBox = this.isRenderedAsSchematicBox()
     const schematic_group = db.schematic_group.insert({
       is_subcircuit: this.isSubcircuit,
       subcircuit_id: this.subcircuit_id!,
@@ -734,6 +800,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
       height: 0,
       schematic_component_ids: [],
       source_group_id: this.source_group_id!,
+      show_as_schematic_box: showAsBox || undefined,
     })
     this.schematic_group_id = schematic_group.schematic_group_id
 
@@ -743,6 +810,78 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
           schematic_group_id: schematic_group.schematic_group_id,
         })
       }
+    }
+
+    if (showAsBox) {
+      this._doInitialSchematicComponentRenderAsSchematicBox(
+        schematic_group.schematic_group_id,
+      )
+    }
+  }
+
+  private _doInitialSchematicComponentRenderAsSchematicBox(
+    schematic_group_id: string,
+  ) {
+    if (this.root?.schematicDisabled) return
+    const { db } = this.root!
+    const props = this._parsedProps as SubcircuitGroupProps
+    const dimensions = this._getSchematicBoxDimensions()
+    if (!dimensions) return
+
+    const center = this._getGlobalSchematicPositionBeforeLayout()
+    const schPortArrangement = this._getSchematicPortArrangement()
+    const pinLabels = (this._parsedProps as any).pinLabels
+
+    const primaryPortLabels: Record<string, string> = {}
+    if (Array.isArray(pinLabels)) {
+      pinLabels.forEach((label: string, index: number) => {
+        primaryPortLabels[String(index + 1)] = label
+      })
+    } else if (pinLabels) {
+      for (const [port, label] of Object.entries(pinLabels)) {
+        primaryPortLabels[port] = Array.isArray(label) ? label[0] : label
+      }
+    }
+
+    const schematic_component = db.schematic_component.insert({
+      center,
+      rotation: props.schRotation ?? 0,
+      size: dimensions.getSize(),
+      schematic_group_id,
+      port_arrangement: schPortArrangement
+        ? underscorifyPortArrangement(schPortArrangement)
+        : undefined,
+      pin_spacing: props.schPinSpacing ?? 0.2,
+      pin_styles: underscorifyPinStyles(props.schPinStyle, pinLabels),
+      port_labels: primaryPortLabels,
+      source_group_id: this.source_group_id ?? undefined,
+      is_schematic_group: true,
+    })
+
+    this.schematic_component_id = schematic_component.schematic_component_id
+
+    if (props.name) {
+      const { width, height } = dimensions.getSize()
+      const hasTopOrBottomPins =
+        schPortArrangement?.topSide !== undefined ||
+        schPortArrangement?.bottomSide !== undefined
+
+      db.schematic_text.insert({
+        text: props.name,
+        schematic_component_id: schematic_component.schematic_component_id,
+        anchor: "left",
+        rotation: 0,
+        position: {
+          x: hasTopOrBottomPins
+            ? center.x + width / 2 + 0.1
+            : center.x - width / 2,
+          y: hasTopOrBottomPins
+            ? center.y + height / 2 + 0.55
+            : center.y + height / 2 + 0.13,
+        },
+        color: "#006464",
+        font_size: 0.18,
+      })
     }
   }
 
@@ -883,6 +1022,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
 
   _insertSchematicBorder() {
     if (this.root?.schematicDisabled) return
+    if (this.isRenderedAsSchematicBox()) return
     const { db } = this.root!
     const props = this._parsedProps as SubcircuitGroupProps
 
