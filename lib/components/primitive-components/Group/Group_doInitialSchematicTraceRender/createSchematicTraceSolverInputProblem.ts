@@ -7,6 +7,7 @@ import {
 } from "@tscircuit/schematic-trace-solver"
 import type { AxisDirection } from "./getSide"
 import { getSchematicPortTraceAnchor } from "lib/utils/schematic/getSchematicPortTraceAnchor"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 
 export type SolverInputContext = {
   inputProblem: InputProblem
@@ -111,6 +112,8 @@ export function createSchematicTraceSolverInputProblem(
       const anchor = getSchematicPortTraceAnchor({
         center: schematicPort.center,
         facingDirection: schematicPort.facing_direction,
+        portRadius:
+          schematicPort.trace_anchor_offset ?? DEFAULT_SCHEMATIC_PORT_RADIUS,
       })
       pins.push({
         pinId,

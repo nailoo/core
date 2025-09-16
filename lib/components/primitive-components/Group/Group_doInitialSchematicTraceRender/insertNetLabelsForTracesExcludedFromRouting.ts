@@ -3,6 +3,7 @@ import { SchematicTracePipelineSolver } from "@tscircuit/schematic-trace-solver"
 import { computeSchematicNetLabelCenter } from "lib/utils/schematic/computeSchematicNetLabelCenter"
 import { getEnteringEdgeFromDirection } from "lib/utils/schematic/getEnteringEdgeFromDirection"
 import { getSchematicPortTraceAnchor } from "lib/utils/schematic/getSchematicPortTraceAnchor"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 
 export function insertNetLabelsForTracesExcludedFromRouting(args: {
   group: Group<any>
@@ -28,9 +29,15 @@ export function insertNetLabelsForTracesExcludedFromRouting(args: {
       const ports = res.ports.slice(0, 2)
       for (const port of ports) {
         const portCenter = port._getGlobalSchematicPositionAfterLayout()
+        const schematicPortRecord = port.schematic_port_id
+          ? db.schematic_port.get(port.schematic_port_id)
+          : null
+        const traceAnchorOffset =
+          schematicPortRecord?.trace_anchor_offset ?? DEFAULT_SCHEMATIC_PORT_RADIUS
         const anchor_position = getSchematicPortTraceAnchor({
           center: portCenter,
           facingDirection: port.facingDirection,
+          portRadius: traceAnchorOffset,
         })
         const side =
           getEnteringEdgeFromDirection(port.facingDirection || "right") ||

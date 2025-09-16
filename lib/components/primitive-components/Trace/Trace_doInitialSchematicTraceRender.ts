@@ -22,6 +22,7 @@ import { getOtherSchematicTraces } from "./trace-utils/get-other-schematic-trace
 import { pushEdgesOfSchematicTraceToPreventOverlap } from "./trace-utils/push-edges-of-schematic-trace-to-prevent-overlap"
 import { computeSchematicNetLabelCenter } from "lib/utils/schematic/computeSchematicNetLabelCenter"
 import { getSchematicPortTraceAnchor } from "lib/utils/schematic/getSchematicPortTraceAnchor"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 import { Trace } from "./Trace"
 import { convertFacingDirectionToElbowDirection } from "lib/utils/schematic/convertFacingDirectionToElbowDirection"
 import { TraceConnectionError } from "../../../errors"
@@ -77,12 +78,18 @@ export const Trace_doInitialSchematicTraceRender = (trace: Trace) => {
     .filter(({ port }) => port.schematic_port_id !== null)
     .map(({ port }) => {
       const center = port._getGlobalSchematicPositionAfterLayout()
+      const schematicPortRecord = port.schematic_port_id
+        ? db.schematic_port.get(port.schematic_port_id)
+        : null
+      const traceAnchorOffset =
+        schematicPortRecord?.trace_anchor_offset ?? DEFAULT_SCHEMATIC_PORT_RADIUS
       return {
         port,
         center,
         position: getSchematicPortTraceAnchor({
           center,
           facingDirection: port.facingDirection,
+          portRadius: traceAnchorOffset,
         }),
         schematic_port_id: port.schematic_port_id ?? undefined,
         facingDirection: port.facingDirection,

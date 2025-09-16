@@ -6,6 +6,7 @@ import { Net } from "./Net"
 import { createNetsFromProps } from "lib/utils/components/createNetsFromProps"
 import { computeSchematicNetLabelCenter } from "lib/utils/schematic/computeSchematicNetLabelCenter"
 import { getSchematicPortTraceAnchor } from "lib/utils/schematic/getSchematicPortTraceAnchor"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 import {
   applyToPoint,
   identity,
@@ -218,9 +219,13 @@ export class NetLabel extends PrimitiveComponent<typeof netLabelProps> {
       }
 
       const portCenter = port._getGlobalSchematicPositionAfterLayout()
+      const schematicPortRecord = db.schematic_port.get(port.schematic_port_id)
+      const traceAnchorOffset =
+        schematicPortRecord?.trace_anchor_offset ?? DEFAULT_SCHEMATIC_PORT_RADIUS
       const portPos = getSchematicPortTraceAnchor({
         center: portCenter,
         facingDirection: port.facingDirection,
+        portRadius: traceAnchorOffset,
       })
       const portFacing =
         convertFacingDirectionToElbowDirection(

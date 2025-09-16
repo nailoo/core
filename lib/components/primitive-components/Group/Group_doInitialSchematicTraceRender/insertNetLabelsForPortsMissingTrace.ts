@@ -3,6 +3,7 @@ import type { Group } from "lib/components"
 import { computeSchematicNetLabelCenter } from "lib/utils/schematic/computeSchematicNetLabelCenter"
 import { getEnteringEdgeFromDirection } from "lib/utils/schematic/getEnteringEdgeFromDirection"
 import { getSchematicPortTraceAnchor } from "lib/utils/schematic/getSchematicPortTraceAnchor"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 
 export const insertNetLabelsForPortsMissingTrace = ({
   allSourceAndSchematicPortIdsInScope,
@@ -45,6 +46,7 @@ export const insertNetLabelsForPortsMissingTrace = ({
     const anchor_position = getSchematicPortTraceAnchor({
       center: schPort.center,
       facingDirection: schPort.facing_direction,
+      portRadius: schPort.trace_anchor_offset ?? DEFAULT_SCHEMATIC_PORT_RADIUS,
     })
 
     const existingAtPort = db.schematic_net_label.list().some((nl) => {

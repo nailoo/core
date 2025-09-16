@@ -1,6 +1,7 @@
 import { getEnteringEdgeFromDirection } from "lib/utils/schematic/getEnteringEdgeFromDirection"
 import { computeSchematicNetLabelCenter } from "lib/utils/schematic/computeSchematicNetLabelCenter"
 import { getSchematicPortTraceAnchor } from "lib/utils/schematic/getSchematicPortTraceAnchor"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 import type { Trace } from "./Trace"
 
 export function Trace__doInitialSchematicTraceRenderWithDisplayLabel(
@@ -19,12 +20,18 @@ export function Trace__doInitialSchematicTraceRenderWithDisplayLabel(
 
   const portsWithPosition = connectedPorts.map(({ port }) => {
     const center = port._getGlobalSchematicPositionAfterLayout()
+    const schematicPortRecord = port.schematic_port_id
+      ? db.schematic_port.get(port.schematic_port_id)
+      : null
+    const traceAnchorOffset =
+      schematicPortRecord?.trace_anchor_offset ?? DEFAULT_SCHEMATIC_PORT_RADIUS
     return {
       port,
       center,
       position: getSchematicPortTraceAnchor({
         center,
         facingDirection: port.facingDirection,
+        portRadius: traceAnchorOffset,
       }),
       schematic_port_id: port.schematic_port_id!,
       facingDirection: port.facingDirection,

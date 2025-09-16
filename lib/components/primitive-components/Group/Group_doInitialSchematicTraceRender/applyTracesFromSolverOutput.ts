@@ -5,6 +5,7 @@ import { computeCrossings } from "./compute-crossings"
 import { computeJunctions } from "./compute-junctions"
 import Debug from "debug"
 import { getSchematicPortTraceAnchor } from "lib/utils/schematic/getSchematicPortTraceAnchor"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 
 const debug = Debug("Group_doInitialSchematicTraceRender")
 
@@ -53,6 +54,8 @@ export function applyTracesFromSolverOutput(args: {
         const anchor = getSchematicPortTraceAnchor({
           center: schematicPort.center,
           facingDirection: schematicPort.facing_direction,
+          portRadius:
+            schematicPort.trace_anchor_offset ?? DEFAULT_SCHEMATIC_PORT_RADIUS,
         })
         points[index] = { x: anchor.x, y: anchor.y }
       }

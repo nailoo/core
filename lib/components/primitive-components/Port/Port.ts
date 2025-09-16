@@ -13,6 +13,10 @@ import { areAllPcbPrimitivesOverlapping } from "./areAllPcbPrimitivesOverlapping
 import { getCenterOfPcbPrimitives } from "./getCenterOfPcbPrimitives"
 import type { PinAttributeMap } from "@tscircuit/props"
 import type { INormalComponent } from "lib/components/base-components/NormalComponent/INormalComponent"
+import {
+  DEFAULT_SCHEMATIC_PORT_RADIUS,
+  getSymbolPortTraceAnchorOffset,
+} from "lib/utils/schematic/portGeometry"
 
 export const portProps = z.object({
   name: z.string().optional(),
@@ -475,7 +479,14 @@ export class Port extends PrimitiveComponent<typeof portProps> {
       bestDisplayPinLabel = labelHints[0]
     }
 
-    const schematicPortInsertProps: Omit<SchematicPort, "schematic_port_id"> = {
+    const traceAnchorOffset =
+      getSymbolPortTraceAnchorOffset(this.schematicSymbolPortDef) ??
+      DEFAULT_SCHEMATIC_PORT_RADIUS
+
+    const schematicPortInsertProps: Omit<SchematicPort, "schematic_port_id"> & {
+      trace_anchor_offset?: number
+      port_radius?: number
+    } = {
       type: "schematic_port",
       schematic_component_id: this.parent?.schematic_component_id!,
       center: portCenter,
@@ -487,6 +498,8 @@ export class Port extends PrimitiveComponent<typeof portProps> {
       true_ccw_index: localPortInfo?.trueIndex,
       display_pin_label: bestDisplayPinLabel,
       is_connected: false,
+      trace_anchor_offset: traceAnchorOffset,
+      port_radius: traceAnchorOffset,
     }
 
     for (const attributes of this._getMatchingPinAttributes()) {

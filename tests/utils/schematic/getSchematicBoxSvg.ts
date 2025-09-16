@@ -1,4 +1,5 @@
 import type { getAllDimensionsForSchematicBox } from "lib/utils/schematic/getAllDimensionsForSchematicBox"
+import { DEFAULT_SCHEMATIC_PORT_RADIUS } from "lib/utils/schematic/portGeometry"
 
 const MARGIN = 1
 
@@ -15,7 +16,7 @@ export const getSchematicBoxSvg = (
   for (let i = 1; i <= dimensions.pinCount; i++) {
     const pos = dimensions.getPortPositionByPinNumber(i)
     if (!pos) continue
-    svg += `<circle cx="${pos.x}" cy="${pos.y}" r="0.02" fill="red" />`
+    svg += `<circle cx="${pos.x}" cy="${pos.y}" r="${DEFAULT_SCHEMATIC_PORT_RADIUS}" fill="red" />`
     svg += `<text x="${pos.x + 0.1}" y="${pos.y + 0.01}" transform="translate(0,${(pos.y + 0.01) * 2}) scale(1,-1)"  fill="green" font-size="0.1" text-anchor="middle">${i}</text>`
   }
 
