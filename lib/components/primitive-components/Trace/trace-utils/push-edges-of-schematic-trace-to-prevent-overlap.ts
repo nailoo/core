@@ -1,6 +1,6 @@
 import type { SchematicTrace } from "circuit-json"
 import type { CircuitJsonUtilObjects } from "@tscircuit/circuit-json-util"
-import { doesLineIntersectLine } from "@tscircuit/math-utils"
+import { doesLineIntersectLine, type Point } from "@tscircuit/math-utils"
 import { getOtherSchematicTraces } from "./get-other-schematic-traces"
 
 /**
@@ -17,6 +17,34 @@ export const pushEdgesOfSchematicTraceToPreventOverlap = ({
   source_trace_id: string
 }) => {
   const mySourceTrace = db.source_trace.get(source_trace_id)!
+  const anchorPoints: Point[] = []
+
+  const addAnchorPoint = (point?: { x: number; y: number } | null) => {
+    if (!point) return
+    anchorPoints.push({ x: point.x, y: point.y })
+  }
+
+  for (const source_port_id of mySourceTrace?.connected_source_port_ids ?? []) {
+    const ports = db.schematic_port.list({ source_port_id })
+    for (const port of ports) {
+      addAnchorPoint(port.center)
+    }
+  }
+
+  for (const source_net_id of mySourceTrace?.connected_source_net_ids ?? []) {
+    const netLabels = db.schematic_net_label.list({ source_net_id })
+    for (const netLabel of netLabels) {
+      addAnchorPoint(netLabel.anchor_position ?? netLabel.center)
+    }
+  }
+
+  const isAnchorPoint = (point: Point) =>
+    anchorPoints.some(
+      (anchor) =>
+        Math.abs(anchor.x - point.x) < 1e-6 &&
+        Math.abs(anchor.y - point.y) < 1e-6,
+    )
+
   const otherEdges: SchematicTrace["edges"] = getOtherSchematicTraces({
     db,
     source_trace_id,
@@ -29,6 +57,9 @@ export const pushEdgesOfSchematicTraceToPreventOverlap = ({
   }
 
   for (const mySegment of edges) {
+    if (isAnchorPoint(mySegment.from) || isAnchorPoint(mySegment.to)) {
+      continue
+    }
     const mySegmentOrientation = edgeOrientation(mySegment)
     const findOverlappingParallelSegment = () =>
       otherEdges.find(
