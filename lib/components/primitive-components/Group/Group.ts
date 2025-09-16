@@ -18,6 +18,7 @@ import { z } from "zod"
 import { NormalComponent } from "../../base-components/NormalComponent/NormalComponent"
 import type { Trace } from "../Trace/Trace"
 import { TraceHint } from "../TraceHint"
+import { Port } from "../Port/Port"
 import type { ISubcircuit } from "./ISubcircuit"
 import { getSimpleRouteJsonFromCircuitJson } from "lib/utils/public-exports"
 import type { GenericLocalAutorouter } from "lib/utils/autorouting/GenericLocalAutorouter"
@@ -859,6 +860,16 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
     })
 
     this.schematic_component_id = schematic_component.schematic_component_id
+
+    for (const child of this.children) {
+      if (child.componentName !== "Port") continue
+      const port = child as Port
+      const phaseState = port.renderPhaseStates.SchematicPortRender
+      phaseState.initialized = false
+      phaseState.dirty = true
+    }
+
+    this._markDirty("SchematicPortRender")
 
     if (props.name) {
       const { width, height } = dimensions.getSize()
