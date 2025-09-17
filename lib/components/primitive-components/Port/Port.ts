@@ -249,6 +249,15 @@ export class Port extends PrimitiveComponent<typeof portProps> {
     return matches
   }
 
+  getRatsNestColorHint(): string | undefined {
+    for (const attributes of this._getMatchingPinAttributes()) {
+      if (attributes.ratsNestColor) {
+        return attributes.ratsNestColor
+      }
+    }
+    return undefined
+  }
+
   private _shouldIncludeInBoardPinout(): boolean {
     return this._getMatchingPinAttributes().some(
       (attributes) => attributes.includeInBoardPinout === true,

@@ -9,6 +9,39 @@ import { autoroute } from "@tscircuit/infgrid-ijump-astar"
 export class Net extends PrimitiveComponent<typeof netProps> {
   source_net_id?: string
 
+  private _getResolvedRatsNestColor(): string | undefined {
+    if (this._parsedProps?.ratsNestColor) return this._parsedProps.ratsNestColor
+    for (const port of this.getAllConnectedPorts()) {
+      const color = port.getRatsNestColorHint?.()
+      if (color) return color
+    }
+    return undefined
+  }
+
+  private _syncPcbNetRatsNestColor(colorHint?: string): void {
+    const root = this.root
+    if (!root?.db.pcb_net || !this.source_net_id) return
+
+    const pcbNetTable = root.db.pcb_net
+    const color = colorHint ?? this._getResolvedRatsNestColor()
+    if (!color) return
+
+    const existing = pcbNetTable.getWhere?.({
+      source_net_id: this.source_net_id,
+    })
+
+    if (existing) {
+      if (existing.rats_nest_color === color) return
+      pcbNetTable.update(existing.pcb_net_id, { rats_nest_color: color })
+      return
+    }
+
+    pcbNetTable.insert({
+      source_net_id: this.source_net_id,
+      rats_nest_color: color,
+    } as any)
+  }
+
   get config() {
     return {
       componentName: "Net",
@@ -36,24 +69,21 @@ export class Net extends PrimitiveComponent<typeof netProps> {
       is_positive_voltage_source: isPositiveVoltageSource,
     })
 
+    this.source_net_id = net.source_net_id
+
     if (db.pcb_net) {
       const existingPcbNet = db.pcb_net.getWhere?.({
         source_net_id: net.source_net_id,
       })
 
-      if (existingPcbNet) {
-        db.pcb_net.update(existingPcbNet.pcb_net_id, {
-          rats_nest_color: props.ratsNestColor,
-        })
-      } else {
+      if (!existingPcbNet) {
         db.pcb_net.insert({
           source_net_id: net.source_net_id,
-          rats_nest_color: props.ratsNestColor,
         } as any)
       }
     }
 
-    this.source_net_id = net.source_net_id
+    this._syncPcbNetRatsNestColor(props.ratsNestColor)
   }
 
   doInitialSourceParentAttachment(): void {
@@ -229,10 +259,14 @@ export class Net extends PrimitiveComponent<typeof netProps> {
         return
       }
 
+      const ratsNestColor = this._getResolvedRatsNestColor()
+
       db.pcb_trace.insert({
         ...(trace as any),
-        rats_nest_color: this._parsedProps.ratsNestColor,
+        ...(ratsNestColor ? { rats_nest_color: ratsNestColor } : {}),
       })
+
+      this._syncPcbNetRatsNestColor(ratsNestColor)
     }
   }
 

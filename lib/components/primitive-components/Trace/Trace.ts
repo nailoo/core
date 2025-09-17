@@ -154,6 +154,26 @@ export class Trace
     return { netsWithSelectors, nets: netsWithSelectors.map((n) => n.net) }
   }
 
+  private _mirrorRatsNestColorOntoPcbNets(
+    nets: Net[],
+    color: string,
+  ): void {
+    if (!this.root?.db.pcb_net) return
+
+    for (const net of nets) {
+      const sourceNetId = net.source_net_id
+      if (!sourceNetId) continue
+      const pcbNet = this.root.db.pcb_net.getWhere?.({
+        source_net_id: sourceNetId,
+      })
+      if (!pcbNet) continue
+      if (pcbNet.rats_nest_color === color) continue
+      this.root.db.pcb_net.update(pcbNet.pcb_net_id, {
+        rats_nest_color: color,
+      })
+    }
+  }
+
   /**
    * Get all the traces that are connected in any degree to this trace, this is
    * used during autorouting to routes to pass through traces connected to the
@@ -194,7 +214,21 @@ export class Trace
 
     for (const net of netsToCheck) {
       const color = net?._parsedProps?.ratsNestColor
-      if (color) return color
+      if (color) {
+        this._mirrorRatsNestColorOntoPcbNets(netsToCheck, color)
+        return color
+      }
+    }
+
+    const portsToCheck =
+      ports ?? this._findConnectedPorts().ports?.filter(Boolean) ?? []
+
+    for (const port of portsToCheck) {
+      const color = port.getRatsNestColorHint?.()
+      if (color) {
+        this._mirrorRatsNestColorOntoPcbNets(netsToCheck, color)
+        return color
+      }
     }
     return undefined
   }
