@@ -42,9 +42,15 @@ export const insertNetLabelsForPortsMissingTrace = ({
     // Avoid duplicate labels at this port anchor position
     // Use a larger tolerance to account for placement discrepancy between
     // different net label algorithms (solver vs port-based placement)
+    const schematicComponent = schPort.schematic_component_id
+      ? db.schematic_component.get(schPort.schematic_component_id)
+      : null
+
     const anchor_position = getSchematicPortTraceAnchor({
       center: schPort.center,
       facingDirection: schPort.facing_direction,
+      componentCenter: schematicComponent?.center ?? null,
+      componentSize: schematicComponent?.size ?? null,
     })
 
     const existingAtPort = db.schematic_net_label.list().some((nl) => {

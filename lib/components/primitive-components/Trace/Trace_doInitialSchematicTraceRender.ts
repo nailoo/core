@@ -77,12 +77,18 @@ export const Trace_doInitialSchematicTraceRender = (trace: Trace) => {
     .filter(({ port }) => port.schematic_port_id !== null)
     .map(({ port }) => {
       const center = port._getGlobalSchematicPositionAfterLayout()
+      const componentId = port.parent?.schematic_component_id
+      const schematicComponent = componentId
+        ? db.schematic_component.get(componentId)
+        : null
       return {
         port,
         center,
         position: getSchematicPortTraceAnchor({
           center,
           facingDirection: port.facingDirection,
+          componentCenter: schematicComponent?.center ?? null,
+          componentSize: schematicComponent?.size ?? null,
         }),
         schematic_port_id: port.schematic_port_id ?? undefined,
         facingDirection: port.facingDirection,
