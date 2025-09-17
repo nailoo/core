@@ -218,9 +218,13 @@ export class NetLabel extends PrimitiveComponent<typeof netLabelProps> {
       }
 
       const portCenter = port._getGlobalSchematicPositionAfterLayout()
+      const distanceFromComponentEdge = port.schematic_port_id
+        ? db.schematic_port.get(port.schematic_port_id)?.distance_from_component_edge
+        : undefined
       const portPos = getSchematicPortTraceAnchor({
         center: portCenter,
         facingDirection: port.facingDirection,
+        distanceFromComponentEdge,
       })
       const portFacing =
         convertFacingDirectionToElbowDirection(

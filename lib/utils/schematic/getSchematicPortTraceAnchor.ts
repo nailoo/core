@@ -10,22 +10,28 @@ const directionVectors: Record<
   down: { x: 0, y: -1 },
 }
 
-export const SCHEMATIC_PORT_TRACE_ANCHOR_OFFSET = 0.02
-
 export const getSchematicPortTraceAnchor = ({
   center,
   facingDirection,
-  offset = SCHEMATIC_PORT_TRACE_ANCHOR_OFFSET,
+  distanceFromComponentEdge,
+  offset,
 }: {
   center: { x: number; y: number }
   facingDirection?: SchematicPort["facing_direction"] | null
+  distanceFromComponentEdge?: number | null
   offset?: number
 }): { x: number; y: number } => {
   if (!facingDirection) return center
   const direction = directionVectors[facingDirection]
   if (!direction) return center
+
+  const effectiveOffset =
+    distanceFromComponentEdge ?? offset ?? 0
+
+  if (effectiveOffset === 0) return center
+
   return {
-    x: center.x - direction.x * offset,
-    y: center.y - direction.y * offset,
+    x: center.x - direction.x * effectiveOffset,
+    y: center.y - direction.y * effectiveOffset,
   }
 }
