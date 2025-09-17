@@ -30,40 +30,33 @@ export const getSchematicPortTraceAnchor = ({
   if (!direction) return center
   const manualOffset = offset ?? 0
 
-  let distanceFromComponentEdge: number | null = null
+  let geometryOffset = 0
   if (componentCenter && componentSize) {
     const halfWidth = componentSize.width / 2
     const halfHeight = componentSize.height / 2
 
     if (Number.isFinite(halfWidth) && Number.isFinite(halfHeight)) {
-      const top = componentCenter.y + halfHeight
-      const bottom = componentCenter.y - halfHeight
-      const left = componentCenter.x - halfWidth
-      const right = componentCenter.x + halfWidth
+      const axis =
+        facingDirection === "left" || facingDirection === "right" ? "x" : "y"
+      const directionComponent = axis === "x" ? direction.x : direction.y
+      const halfExtent = axis === "x" ? halfWidth : halfHeight
+      const componentCenterCoord =
+        axis === "x" ? componentCenter.x : componentCenter.y
+      const componentEdge =
+        componentCenterCoord + halfExtent * directionComponent
+      const portCoord = axis === "x" ? center.x : center.y
+      const signedDistance =
+        (componentEdge - portCoord) * directionComponent
 
-      if (facingDirection === "left") {
-        const distance = left - center.x
-        if (distance > 0) distanceFromComponentEdge = distance
-      } else if (facingDirection === "right") {
-        const distance = center.x - right
-        if (distance > 0) distanceFromComponentEdge = distance
-      } else if (facingDirection === "up") {
-        const distance = center.y - top
-        if (distance > 0) distanceFromComponentEdge = distance
-      } else if (facingDirection === "down") {
-        const distance = bottom - center.y
-        if (distance > 0) distanceFromComponentEdge = distance
+      if (signedDistance > 0) {
+        geometryOffset = signedDistance
       }
     }
   }
 
-  const usableDistance =
-    distanceFromComponentEdge !== null && distanceFromComponentEdge > 0
-      ? distanceFromComponentEdge
-      : null
-  const totalOffset = usableDistance ?? manualOffset
+  const totalOffset = geometryOffset + manualOffset
   return {
-    x: center.x - direction.x * totalOffset,
-    y: center.y - direction.y * totalOffset,
+    x: center.x + direction.x * totalOffset,
+    y: center.y + direction.y * totalOffset,
   }
 }
