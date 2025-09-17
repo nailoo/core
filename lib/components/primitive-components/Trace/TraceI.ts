@@ -1,4 +1,4 @@
-import type { traceProps } from "./traceProps"
+import { traceProps } from "@tscircuit/props"
 import type { PrimitiveComponent } from "lib/components/base-components/PrimitiveComponent"
 
 export interface TraceI extends PrimitiveComponent<typeof traceProps> {

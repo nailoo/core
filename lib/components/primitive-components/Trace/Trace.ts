@@ -1,5 +1,5 @@
 import { MultilayerIjump } from "@tscircuit/infgrid-ijump-astar"
-import { traceProps } from "./traceProps"
+import { traceProps } from "@tscircuit/props"
 import {
   type LayerRef,
   type PcbTrace,
