@@ -333,7 +333,15 @@ export interface PcbTrace {
   route_order_index?: number
   route_thickness_mode?: "constant" | "interpolated"
   should_round_corners?: boolean
+  rats_nest_color?: string
   route: Array<PcbTraceRoutePoint>
+}
+
+export interface PcbNet {
+  type: "pcb_net"
+  pcb_net_id: string
+  source_net_id?: string
+  rats_nest_color?: string
 }
 
 export interface PcbBoard {

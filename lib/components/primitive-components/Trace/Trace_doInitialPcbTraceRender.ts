@@ -8,6 +8,7 @@ import { mergeRoutes } from "lib/utils/autorouting/mergeRoutes"
 import { getClosest } from "lib/utils/getClosest"
 import { pairs } from "lib/utils/pairs"
 import { tryNow } from "lib/utils/try-now"
+import type { Net } from "../Net"
 import type { Port } from "../Port"
 import type { TraceHint } from "../TraceHint"
 import { getTraceLength } from "./trace-utils/compute-trace-length"
@@ -45,21 +46,34 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
     return
   }
 
-  // Check for cached route
+  // Manual traces are handled in PcbManualTraceRender phase
+  if (props.pcbPath && props.pcbPath.length > 0) {
+    return
+  }
+
+  const { allPortsFound, ports } = trace._findConnectedPorts()
+  const nets = trace._findConnectedNets().netsWithSelectors
+  const connectedNets = nets
+    .map(({ net }) => net)
+    .filter((net): net is Net => Boolean(net))
+
   const cachedRoute = subcircuit._parsedProps.pcbRouteCache?.pcbTraces
   if (cachedRoute) {
+    const cachedRatsNestColor = trace._getRatsNestColorFromConnections({
+      ports: ports ?? [],
+      nets: connectedNets,
+    })
     const pcb_trace = db.pcb_trace.insert({
       route: cachedRoute.flatMap((trace) => trace.route),
       source_trace_id: trace.source_trace_id!,
       subcircuit_id: subcircuit?.subcircuit_id ?? undefined,
       pcb_group_id: trace.getGroup()?.pcb_group_id ?? undefined,
+      ...(cachedRatsNestColor
+        ? { rats_nest_color: cachedRatsNestColor }
+        : {}),
     })
+    trace._portsRoutedOnPcb = ports ?? []
     trace.pcb_trace_id = pcb_trace.pcb_trace_id
-    return
-  }
-
-  // Manual traces are handled in PcbManualTraceRender phase
-  if (props.pcbPath && props.pcbPath.length > 0) {
     return
   }
 
@@ -67,10 +81,9 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
     return
   }
 
-  const { allPortsFound, ports } = trace._findConnectedPorts()
   const portsConnectedOnPcbViaNet: Port[] = []
 
-  if (!allPortsFound) return
+  if (!allPortsFound || !ports) return
 
   const portsWithoutMatchedPcbPrimitive: Port[] = []
   for (const port of ports) {
@@ -92,8 +105,6 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
     })
     return
   }
-
-  const nets = trace._findConnectedNets().netsWithSelectors
 
   if (ports.length === 0 && nets.length === 2) {
     // Find the two optimal points to connect the two nets
@@ -362,11 +373,16 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
   const mergedRoute = mergeRoutes(routes)
 
   const traceLength = getTraceLength(mergedRoute)
+  const ratsNestColor = trace._getRatsNestColorFromConnections({
+    ports,
+    nets: connectedNets,
+  })
   const pcb_trace = db.pcb_trace.insert({
     route: mergedRoute,
     source_trace_id: trace.source_trace_id!,
     subcircuit_id: trace.getSubcircuit()?.subcircuit_id!,
     trace_length: traceLength,
+    ...(ratsNestColor ? { rats_nest_color: ratsNestColor } : {}),
   })
   trace._portsRoutedOnPcb = ports
   trace.pcb_trace_id = pcb_trace.pcb_trace_id

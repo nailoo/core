@@ -136,6 +136,12 @@ export interface CircleSmtPadProps extends Omit<PcbLayoutProps, "pcbRotation"> {
 
 export interface NetProps {
   name: string
+  ratsNestColor?: string
+}
+
+
+export interface TraceProps /* extends existing trace prop contracts */ {
+  ratsNestColor?: string
 }
 
 

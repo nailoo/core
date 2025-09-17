@@ -13,6 +13,7 @@ export const netProps = z.object({
       (val) => !/[+-]/.test(val),
       'Net names cannot contain "+" or "-", try using underscores instead, e.g. VCC_P',
     ),
+  ratsNestColor: z.string().optional(),
 })
 
 export class Net extends PrimitiveComponent<typeof netProps> {
@@ -43,6 +44,7 @@ export class Net extends PrimitiveComponent<typeof netProps> {
       is_power: isPositiveVoltageSource,
       // @ts-ignore
       is_positive_voltage_source: isPositiveVoltageSource,
+      rats_nest_color: props.ratsNestColor,
     })
 
     this.source_net_id = net.source_net_id
@@ -221,7 +223,10 @@ export class Net extends PrimitiveComponent<typeof netProps> {
         return
       }
 
-      db.pcb_trace.insert(trace as any)
+      db.pcb_trace.insert({
+        ...(trace as any),
+        rats_nest_color: this._parsedProps.ratsNestColor,
+      })
     }
   }
 

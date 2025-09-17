@@ -1,5 +1,5 @@
 import { MultilayerIjump } from "@tscircuit/infgrid-ijump-astar"
-import { traceProps } from "@tscircuit/props"
+import { traceProps } from "./traceProps"
 import {
   type LayerRef,
   type PcbTrace,
@@ -174,6 +174,29 @@ export class Trace
         tPorts.some((p) => myPorts.includes(p))
       )
     })
+  }
+
+  _getRatsNestColorFromConnections({
+    ports,
+    nets,
+  }: {
+    ports?: Port[]
+    nets?: Net[]
+  } = {}): string | undefined {
+    const directColor = this._parsedProps?.ratsNestColor
+    if (directColor) return directColor
+
+    const netsToCheck =
+      nets ??
+      this._findConnectedNets().nets.filter(
+        (net): net is Net => Boolean(net),
+      )
+
+    for (const net of netsToCheck) {
+      const color = net?._parsedProps?.ratsNestColor
+      if (color) return color
+    }
+    return undefined
   }
 
   /**
