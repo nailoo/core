@@ -329,10 +329,13 @@ export interface PcbTrace {
   type: "pcb_trace"
   source_trace_id?: string
   pcb_component_id?: string
+  pcb_group_id?: string
+  subcircuit_id?: string
   pcb_trace_id: string
   route_order_index?: number
   route_thickness_mode?: "constant" | "interpolated"
   should_round_corners?: boolean
+  trace_length?: number
   rats_nest_color?: string
   route: Array<PcbTraceRoutePoint>
 }

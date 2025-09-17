@@ -646,6 +646,9 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
         subcircuit_id: this.subcircuit_id!,
         route: routedTrace.route as any,
         // source_trace_id: circuitTrace.source_trace_id!,
+        ...(routedTrace.rats_nest_color
+          ? { rats_nest_color: routedTrace.rats_nest_color }
+          : {}),
       })
       // circuitTrace.pcb_trace_id = pcb_trace.pcb_trace_id
 

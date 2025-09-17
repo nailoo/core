@@ -1,20 +1,10 @@
+import { netProps } from "@tscircuit/props"
 import { PrimitiveComponent } from "../base-components/PrimitiveComponent"
-import { z } from "zod"
 import type { Port } from "./Port"
 import type { Trace } from "./Trace/Trace"
 import { pairs } from "lib/utils/pairs"
 import type { AnyCircuitElement, SourceTrace } from "circuit-json"
 import { autoroute } from "@tscircuit/infgrid-ijump-astar"
-
-export const netProps = z.object({
-  name: z
-    .string()
-    .refine(
-      (val) => !/[+-]/.test(val),
-      'Net names cannot contain "+" or "-", try using underscores instead, e.g. VCC_P',
-    ),
-  ratsNestColor: z.string().optional(),
-})
 
 export class Net extends PrimitiveComponent<typeof netProps> {
   source_net_id?: string
@@ -44,8 +34,24 @@ export class Net extends PrimitiveComponent<typeof netProps> {
       is_power: isPositiveVoltageSource,
       // @ts-ignore
       is_positive_voltage_source: isPositiveVoltageSource,
-      rats_nest_color: props.ratsNestColor,
     })
+
+    if (db.pcb_net) {
+      const existingPcbNet = db.pcb_net.getWhere?.({
+        source_net_id: net.source_net_id,
+      })
+
+      if (existingPcbNet) {
+        db.pcb_net.update(existingPcbNet.pcb_net_id, {
+          rats_nest_color: props.ratsNestColor,
+        })
+      } else {
+        db.pcb_net.insert({
+          source_net_id: net.source_net_id,
+          rats_nest_color: props.ratsNestColor,
+        } as any)
+      }
+    }
 
     this.source_net_id = net.source_net_id
   }

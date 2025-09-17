@@ -2,6 +2,7 @@ export type SimplifiedPcbTrace = {
   type: "pcb_trace"
   pcb_trace_id: string
   connection_name?: string
+  rats_nest_color?: string
   route: Array<
     | {
         route_type: "wire"

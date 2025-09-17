@@ -136,6 +136,7 @@ export interface CircleSmtPadProps extends Omit<PcbLayoutProps, "pcbRotation"> {
 
 export interface NetProps {
   name: string
+  connectsTo?: string | string[]
   ratsNestColor?: string
 }
 

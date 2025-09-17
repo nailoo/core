@@ -23,8 +23,11 @@ it("applies ratsNestColor from nets to pcb traces", () => {
     new Set(["#112233"]),
   )
 
-  const sourceNet = project.db.source_net.getWhere({ name: "N1" })
-  expect(sourceNet?.rats_nest_color).toBe("#112233")
+  const pcbNets = project.db.pcb_net?.list?.() ?? []
+  expect(pcbNets.length).toBeGreaterThan(0)
+  expect(
+    pcbNets.some((net) => net.rats_nest_color === "#112233"),
+  ).toBeTruthy()
 })
 
 it("applies ratsNestColor from trace props to pcb traces", () => {
