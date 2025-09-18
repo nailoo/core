@@ -17,18 +17,29 @@ export function Trace__doInitialSchematicTraceRenderWithDisplayLabel(
 
   if (!allPortsFound) return
 
-  const componentPinSpacingCache = new Map<string, number | null>()
-  const resolvePinSpacing = (schematicComponentId?: string | null) => {
+  const componentGeometryCache = new Map<
+    string,
+    | {
+        center: { x: number; y: number }
+        size: { width: number; height: number }
+      }
+    | null
+  >()
+  const resolveComponentGeometry = (schematicComponentId?: string | null) => {
     if (!schematicComponentId) return undefined
-    if (!componentPinSpacingCache.has(schematicComponentId)) {
+    if (!componentGeometryCache.has(schematicComponentId)) {
       const component = db.schematic_component.get(schematicComponentId)
-      componentPinSpacingCache.set(
+      componentGeometryCache.set(
         schematicComponentId,
-        component?.pin_spacing ?? null,
+        component?.center && component?.size
+          ? {
+              center: component.center,
+              size: component.size,
+            }
+          : null,
       )
     }
-    const spacing = componentPinSpacingCache.get(schematicComponentId)
-    return spacing ?? undefined
+    return componentGeometryCache.get(schematicComponentId) ?? undefined
   }
 
   const portsWithPosition = connectedPorts.map(({ port }) => {
@@ -36,13 +47,19 @@ export function Trace__doInitialSchematicTraceRenderWithDisplayLabel(
     const schematicPort = port.schematic_port_id
       ? db.schematic_port.get(port.schematic_port_id)
       : undefined
+    const componentGeometry = resolveComponentGeometry(
+      schematicPort?.schematic_component_id,
+    )
     return {
       port,
       center,
       position: getSchematicPortTraceAnchor({
         center,
         facingDirection: port.facingDirection,
-        pinSpacing: resolvePinSpacing(schematicPort?.schematic_component_id),
+        distanceFromComponentEdge:
+          schematicPort?.distance_from_component_edge,
+        componentCenter: componentGeometry?.center ?? null,
+        componentSize: componentGeometry?.size ?? null,
       }),
       schematic_port_id: port.schematic_port_id!,
       facingDirection: port.facingDirection,

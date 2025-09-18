@@ -21,18 +21,29 @@ export const insertNetLabelsForPortsMissingTrace = ({
 }) => {
   const { db } = group.root!
 
-  const componentPinSpacingCache = new Map<string, number | null>()
-  const resolvePinSpacing = (schematicComponentId?: string | null) => {
+  const componentGeometryCache = new Map<
+    string,
+    | {
+        center: { x: number; y: number }
+        size: { width: number; height: number }
+      }
+    | null
+  >()
+  const resolveComponentGeometry = (schematicComponentId?: string | null) => {
     if (!schematicComponentId) return undefined
-    if (!componentPinSpacingCache.has(schematicComponentId)) {
+    if (!componentGeometryCache.has(schematicComponentId)) {
       const component = db.schematic_component.get(schematicComponentId)
-      componentPinSpacingCache.set(
+      componentGeometryCache.set(
         schematicComponentId,
-        component?.pin_spacing ?? null,
+        component?.center && component?.size
+          ? {
+              center: component.center,
+              size: component.size,
+            }
+          : null,
       )
     }
-    const spacing = componentPinSpacingCache.get(schematicComponentId)
-    return spacing ?? undefined
+    return componentGeometryCache.get(schematicComponentId) ?? undefined
   }
 
   // Create net labels for ports connected only to a net (no trace connected)
@@ -56,10 +67,15 @@ export const insertNetLabelsForPortsMissingTrace = ({
     // Avoid duplicate labels at this port anchor position
     // Use a larger tolerance to account for placement discrepancy between
     // different net label algorithms (solver vs port-based placement)
+    const componentGeometry = resolveComponentGeometry(
+      schPort.schematic_component_id,
+    )
     const anchor_position = getSchematicPortTraceAnchor({
       center: schPort.center,
       facingDirection: schPort.facing_direction,
-      pinSpacing: resolvePinSpacing(schPort.schematic_component_id),
+      distanceFromComponentEdge: schPort.distance_from_component_edge,
+      componentCenter: componentGeometry?.center ?? null,
+      componentSize: componentGeometry?.size ?? null,
     })
 
     const existingAtPort = db.schematic_net_label.list().some((nl) => {

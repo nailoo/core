@@ -88,18 +88,29 @@ export function createSchematicTraceSolverInputProblem(
   const pinIdToSchematicPortId = new Map<string, string>()
   const schematicPortIdToPinId = new Map<string, string>()
 
-  const componentPinSpacingCache = new Map<string, number | null>()
-  const resolvePinSpacing = (schematicComponentId?: string | null) => {
+  const componentGeometryCache = new Map<
+    string,
+    | {
+        center: { x: number; y: number }
+        size: { width: number; height: number }
+      }
+    | null
+  >()
+  const resolveComponentGeometry = (schematicComponentId?: string | null) => {
     if (!schematicComponentId) return undefined
-    if (!componentPinSpacingCache.has(schematicComponentId)) {
+    if (!componentGeometryCache.has(schematicComponentId)) {
       const component = db.schematic_component.get(schematicComponentId)
-      componentPinSpacingCache.set(
+      componentGeometryCache.set(
         schematicComponentId,
-        component?.pin_spacing ?? null,
+        component?.center && component?.size
+          ? {
+              center: component.center,
+              size: component.size,
+            }
+          : null,
       )
     }
-    const spacing = componentPinSpacingCache.get(schematicComponentId)
-    return spacing ?? undefined
+    return componentGeometryCache.get(schematicComponentId) ?? undefined
   }
 
   for (const schematicComponent of schematicComponents) {
@@ -122,12 +133,15 @@ export function createSchematicTraceSolverInputProblem(
 
     for (const schematicPort of schematicPorts) {
       const pinId = schematicPortIdToPinId.get(schematicPort.schematic_port_id)!
+      const componentGeometry = resolveComponentGeometry(
+        schematicPort.schematic_component_id,
+      )
       const anchor = getSchematicPortTraceAnchor({
         center: schematicPort.center,
         facingDirection: schematicPort.facing_direction,
-        pinSpacing: resolvePinSpacing(
-          schematicPort.schematic_component_id,
-        ),
+        distanceFromComponentEdge: schematicPort.distance_from_component_edge,
+        componentCenter: componentGeometry?.center ?? null,
+        componentSize: componentGeometry?.size ?? null,
       })
       pins.push({
         pinId,

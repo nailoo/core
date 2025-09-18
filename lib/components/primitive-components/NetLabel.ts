@@ -172,18 +172,29 @@ export class NetLabel extends PrimitiveComponent<typeof netLabelProps> {
     const connectsTo = this._resolveConnectsTo()
     if (!connectsTo || connectsTo.length === 0) return
 
-    const componentPinSpacingCache = new Map<string, number | null>()
-    const resolvePinSpacing = (schematicComponentId?: string | null) => {
+    const componentGeometryCache = new Map<
+      string,
+      | {
+          center: { x: number; y: number }
+          size: { width: number; height: number }
+        }
+      | null
+    >()
+    const resolveComponentGeometry = (schematicComponentId?: string | null) => {
       if (!schematicComponentId) return undefined
-      if (!componentPinSpacingCache.has(schematicComponentId)) {
+      if (!componentGeometryCache.has(schematicComponentId)) {
         const component = db.schematic_component.get(schematicComponentId)
-        componentPinSpacingCache.set(
+        componentGeometryCache.set(
           schematicComponentId,
-          component?.pin_spacing ?? null,
+          component?.center && component?.size
+            ? {
+                center: component.center,
+                size: component.size,
+              }
+            : null,
         )
       }
-      const spacing = componentPinSpacingCache.get(schematicComponentId)
-      return spacing ?? undefined
+      return componentGeometryCache.get(schematicComponentId) ?? undefined
     }
 
     // Determine the anchor position and orientation at the net label
@@ -233,10 +244,16 @@ export class NetLabel extends PrimitiveComponent<typeof netLabelProps> {
 
       const portCenter = port._getGlobalSchematicPositionAfterLayout()
       const schematicPort = db.schematic_port.get(port.schematic_port_id)
+      const componentGeometry = resolveComponentGeometry(
+        schematicPort?.schematic_component_id,
+      )
       const portPos = getSchematicPortTraceAnchor({
         center: portCenter,
         facingDirection: port.facingDirection,
-        pinSpacing: resolvePinSpacing(schematicPort?.schematic_component_id),
+        distanceFromComponentEdge:
+          schematicPort?.distance_from_component_edge,
+        componentCenter: componentGeometry?.center ?? null,
+        componentSize: componentGeometry?.size ?? null,
       })
       const portFacing =
         convertFacingDirectionToElbowDirection(
