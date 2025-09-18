@@ -28,9 +28,14 @@ export function insertNetLabelsForTracesExcludedFromRouting(args: {
       const ports = res.ports.slice(0, 2)
       for (const port of ports) {
         const portCenter = port._getGlobalSchematicPositionAfterLayout()
+        const schematic_port = port.schematic_port_id
+          ? db.schematic_port.get(port.schematic_port_id)
+          : undefined
         const anchor_position = getSchematicPortTraceAnchor({
           center: portCenter,
           facingDirection: port.facingDirection,
+          distanceFromComponentEdge:
+            schematic_port?.distance_from_component_edge,
         })
         const side =
           getEnteringEdgeFromDirection(port.facingDirection || "right") ||
