@@ -57,6 +57,7 @@ export function applyTracesFromSolverOutput(args: {
         const anchor = getSchematicPortTraceAnchor({
           center: schematicPort.center,
           facingDirection: schematicPort.facing_direction,
+          distanceFromComponentEdge: schematicPort.distance_from_component_edge,
         })
         points[index] = { x: anchor.x, y: anchor.y }
       }
