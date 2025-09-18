@@ -19,12 +19,16 @@ export function Trace__doInitialSchematicTraceRenderWithDisplayLabel(
 
   const portsWithPosition = connectedPorts.map(({ port }) => {
     const center = port._getGlobalSchematicPositionAfterLayout()
+    const schematicPort = port.schematic_port_id
+      ? db.schematic_port.get(port.schematic_port_id)
+      : undefined
     return {
       port,
       center,
       position: getSchematicPortTraceAnchor({
         center,
         facingDirection: port.facingDirection,
+        distanceFromComponentEdge: schematicPort?.distance_from_component_edge,
       }),
       schematic_port_id: port.schematic_port_id!,
       facingDirection: port.facingDirection,

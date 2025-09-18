@@ -214,13 +214,17 @@ export class NetLabel extends PrimitiveComponent<typeof netLabelProps> {
               (t) => t.source_trace_id === candidateSourceTrace.source_trace_id,
             )
         }
-        if (existingTraceForThisConnection) continue
       }
+      if (existingTraceForThisConnection) continue
 
       const portCenter = port._getGlobalSchematicPositionAfterLayout()
+      const schematicPort = port.schematic_port_id
+        ? db.schematic_port.get(port.schematic_port_id)
+        : undefined
       const portPos = getSchematicPortTraceAnchor({
         center: portCenter,
         facingDirection: port.facingDirection,
+        distanceFromComponentEdge: schematicPort?.distance_from_component_edge,
       })
       const portFacing =
         convertFacingDirectionToElbowDirection(

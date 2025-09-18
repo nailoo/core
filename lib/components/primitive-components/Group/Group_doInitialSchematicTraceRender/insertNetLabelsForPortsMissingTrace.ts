@@ -45,6 +45,7 @@ export const insertNetLabelsForPortsMissingTrace = ({
     const anchor_position = getSchematicPortTraceAnchor({
       center: schPort.center,
       facingDirection: schPort.facing_direction,
+      distanceFromComponentEdge: schPort.distance_from_component_edge,
     })
 
     const existingAtPort = db.schematic_net_label.list().some((nl) => {
