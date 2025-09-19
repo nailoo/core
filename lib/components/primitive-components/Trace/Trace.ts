@@ -211,6 +211,33 @@ export class Trace
     return allIds.join(",")
   }
 
+  _getRatsNestColorForTrace(ports?: Port[]): string | undefined {
+    for (const { net } of this._findConnectedNets().netsWithSelectors) {
+      const color = net?._parsedProps?.ratsNestColor
+      if (typeof color === "string") {
+        return color
+      }
+    }
+
+    let connectedPorts = ports
+    if (!connectedPorts) {
+      const result = this._findConnectedPorts()
+      connectedPorts = result.allPortsFound ? result.ports ?? [] : []
+    }
+
+    for (const port of connectedPorts ?? []) {
+      const attributes = port.getMatchingPinAttributes?.() ?? []
+      for (const attribute of attributes) {
+        const color = (attribute as any).ratsNestColor
+        if (typeof color === "string") {
+          return color
+        }
+      }
+    }
+
+    return undefined
+  }
+
   doInitialSourceTraceRender(): void {
     const { db } = this.root!
     const { _parsedProps: props, parent } = this

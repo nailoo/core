@@ -13,6 +13,8 @@ export const netProps = z.object({
       (val) => !/[+-]/.test(val),
       'Net names cannot contain "+" or "-", try using underscores instead, e.g. VCC_P',
     ),
+  connectsTo: z.string().or(z.array(z.string())).optional(),
+  ratsNestColor: z.string().optional(),
 })
 
 export class Net extends PrimitiveComponent<typeof netProps> {

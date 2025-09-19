@@ -249,6 +249,10 @@ export class Port extends PrimitiveComponent<typeof portProps> {
     return matches
   }
 
+  getMatchingPinAttributes(): PinAttributeMap[] {
+    return this._getMatchingPinAttributes()
+  }
+
   private _shouldIncludeInBoardPinout(): boolean {
     return this._getMatchingPinAttributes().some(
       (attributes) => attributes.includeInBoardPinout === true,

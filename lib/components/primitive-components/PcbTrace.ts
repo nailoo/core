@@ -8,6 +8,7 @@ export const pcbTraceProps = z.object({
   // If this primitive PcbTrace needs to be associated with a source_trace_id
   // it can be added as a prop here. For footprints, it's often not needed.
   source_trace_id: z.string().optional(),
+  ratsNestColor: z.string().optional(),
 })
 
 export type PcbTraceProps = z.infer<typeof pcbTraceProps>
@@ -53,6 +54,9 @@ export class PcbTrace extends PrimitiveComponent<typeof pcbTraceProps> {
       route: transformedRoute,
       subcircuit_id: subcircuit?.subcircuit_id ?? undefined,
       pcb_group_id: this.getGroup()?.pcb_group_id ?? undefined,
+      ...(props.ratsNestColor
+        ? { rats_nest_color: props.ratsNestColor }
+        : {}),
     })
     this.pcb_trace_id = pcb_trace.pcb_trace_id
   }

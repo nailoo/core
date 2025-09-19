@@ -333,6 +333,7 @@ export interface PcbTrace {
   route_order_index?: number
   route_thickness_mode?: "constant" | "interpolated"
   should_round_corners?: boolean
+  rats_nest_color?: string
   route: Array<PcbTraceRoutePoint>
 }
 

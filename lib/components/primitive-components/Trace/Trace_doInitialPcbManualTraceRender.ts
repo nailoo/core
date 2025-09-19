@@ -96,12 +96,14 @@ export function Trace_doInitialPcbManualTraceRender(trace: Trace) {
   })
 
   const traceLength = getTraceLength(route)
+  const ratsNestColor = trace._getRatsNestColorForTrace(ports)
   const pcb_trace = db.pcb_trace.insert({
     route,
     source_trace_id: trace.source_trace_id!,
     subcircuit_id: subcircuit?.subcircuit_id ?? undefined,
     pcb_group_id: trace.getGroup()?.pcb_group_id ?? undefined,
     trace_length: traceLength,
+    ...(ratsNestColor ? { rats_nest_color: ratsNestColor } : {}),
   })
   trace._portsRoutedOnPcb = ports
   trace.pcb_trace_id = pcb_trace.pcb_trace_id

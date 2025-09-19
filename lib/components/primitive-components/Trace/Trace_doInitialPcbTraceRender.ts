@@ -45,19 +45,6 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
     return
   }
 
-  // Check for cached route
-  const cachedRoute = subcircuit._parsedProps.pcbRouteCache?.pcbTraces
-  if (cachedRoute) {
-    const pcb_trace = db.pcb_trace.insert({
-      route: cachedRoute.flatMap((trace) => trace.route),
-      source_trace_id: trace.source_trace_id!,
-      subcircuit_id: subcircuit?.subcircuit_id ?? undefined,
-      pcb_group_id: trace.getGroup()?.pcb_group_id ?? undefined,
-    })
-    trace.pcb_trace_id = pcb_trace.pcb_trace_id
-    return
-  }
-
   // Manual traces are handled in PcbManualTraceRender phase
   if (props.pcbPath && props.pcbPath.length > 0) {
     return
@@ -69,6 +56,21 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
 
   const { allPortsFound, ports } = trace._findConnectedPorts()
   const portsConnectedOnPcbViaNet: Port[] = []
+
+  // Check for cached route
+  const cachedRoute = subcircuit._parsedProps.pcbRouteCache?.pcbTraces
+  if (cachedRoute) {
+    const ratsNestColor = trace._getRatsNestColorForTrace(ports)
+    const pcb_trace = db.pcb_trace.insert({
+      route: cachedRoute.flatMap((trace) => trace.route),
+      source_trace_id: trace.source_trace_id!,
+      subcircuit_id: subcircuit?.subcircuit_id ?? undefined,
+      pcb_group_id: trace.getGroup()?.pcb_group_id ?? undefined,
+      ...(ratsNestColor ? { rats_nest_color: ratsNestColor } : {}),
+    })
+    trace.pcb_trace_id = pcb_trace.pcb_trace_id
+    return
+  }
 
   if (!allPortsFound) return
 
@@ -362,11 +364,13 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
   const mergedRoute = mergeRoutes(routes)
 
   const traceLength = getTraceLength(mergedRoute)
+  const ratsNestColor = trace._getRatsNestColorForTrace(ports)
   const pcb_trace = db.pcb_trace.insert({
     route: mergedRoute,
     source_trace_id: trace.source_trace_id!,
     subcircuit_id: trace.getSubcircuit()?.subcircuit_id!,
     trace_length: traceLength,
+    ...(ratsNestColor ? { rats_nest_color: ratsNestColor } : {}),
   })
   trace._portsRoutedOnPcb = ports
   trace.pcb_trace_id = pcb_trace.pcb_trace_id
