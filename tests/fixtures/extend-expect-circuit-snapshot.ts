@@ -7,10 +7,10 @@ import {
 import { it, expect, type CustomMatcher, type MatcherResult } from "bun:test"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import looksSame from "looks-same"
 import { RootCircuit } from "lib/RootCircuit"
 import type { AnyCircuitElement } from "circuit-json"
 import { convertCircuitJsonToSimple3dSvg } from "circuit-json-to-simple-3d"
+import { getLooksSame } from "./load-looks-same"
 
 async function saveSvgSnapshotOfCircuitJson({
   soup,
@@ -59,6 +59,7 @@ async function saveSvgSnapshotOfCircuitJson({
   }
 
   const existingSnapshot = fs.readFileSync(filePath, "utf-8")
+  const looksSame = await getLooksSame()
 
   const result = await looksSame(
     Buffer.from(svg),

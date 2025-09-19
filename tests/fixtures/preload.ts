@@ -1,4 +1,10 @@
-import "bun-match-svg"
+await import("bun-match-svg").catch(async () => {
+  const { registerBunMatchSvgFallback } = await import(
+    "./bun-match-svg-shim"
+  )
+  registerBunMatchSvgFallback()
+})
+
 import "./extend-expect-any-svg"
 import "lib/register-catalogue"
 

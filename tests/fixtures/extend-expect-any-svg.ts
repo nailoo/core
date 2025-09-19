@@ -1,7 +1,7 @@
 import { expect, type MatcherResult } from "bun:test"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import looksSame from "looks-same"
+import { getLooksSame } from "./load-looks-same"
 
 const DIFF_THRESHOLD_PERCENT = 1 // only update snapshot if >1% difference
 
@@ -40,6 +40,7 @@ async function toMatchSvgSnapshot(
   }
 
   const existingSnapshot = fs.readFileSync(filePath, "utf-8")
+  const looksSame = await getLooksSame()
 
   const result: any = await looksSame(
     Buffer.from(svg),
