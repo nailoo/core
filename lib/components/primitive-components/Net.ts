@@ -18,6 +18,10 @@ export class Net extends PrimitiveComponent<typeof netProps> {
     return undefined
   }
 
+  getResolvedRatsNestColor(): string | undefined {
+    return this._getResolvedRatsNestColor()
+  }
+
   private _syncPcbNetRatsNestColor(colorHint?: string): void {
     const root = this.root
     if (!root?.db.pcb_net || !this.source_net_id) return
@@ -40,6 +44,10 @@ export class Net extends PrimitiveComponent<typeof netProps> {
       source_net_id: this.source_net_id,
       rats_nest_color: color,
     } as any)
+  }
+
+  ensurePcbNetRatsNestColorSynced(colorHint?: string): void {
+    this._syncPcbNetRatsNestColor(colorHint)
   }
 
   get config() {

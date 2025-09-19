@@ -17,6 +17,7 @@ import type { SimpleRouteJson } from "lib/utils/autorouting/SimpleRouteJson"
 import { z } from "zod"
 import { NormalComponent } from "../../base-components/NormalComponent/NormalComponent"
 import type { Trace } from "../Trace/Trace"
+import type { Net } from "../Net"
 import { TraceHint } from "../TraceHint"
 import type { ISubcircuit } from "./ISubcircuit"
 import { getSimpleRouteJsonFromCircuitJson } from "lib/utils/public-exports"
@@ -36,6 +37,42 @@ import { Group_doInitialPcbLayoutFlex } from "./Group_doInitialPcbLayoutFlex"
 import { convertSrjToGraphicsObject } from "@tscircuit/capacity-autorouter"
 import type { GraphicsObject } from "graphics-debug"
 import { Group_doInitialSchematicTraceRender } from "./Group_doInitialSchematicTraceRender/Group_doInitialSchematicTraceRender"
+
+const resolveRatsNestColorForAutoroutedTrace = ({
+  sourceTraceId,
+  connectionName,
+  traces,
+  nets,
+}: {
+  sourceTraceId?: string
+  connectionName?: string
+  traces: Trace[]
+  nets: Net[]
+}): string | undefined => {
+  const findTraceById = (id?: string) =>
+    id ? traces.find((trace) => trace.source_trace_id === id) : undefined
+
+  const matchedTrace =
+    findTraceById(sourceTraceId) ?? findTraceById(connectionName)
+
+  if (matchedTrace) {
+    return matchedTrace._getRatsNestColorFromConnections()
+  }
+
+  const findNetById = (id?: string) =>
+    id ? nets.find((net) => net.source_net_id === id) : undefined
+
+  const matchedNet =
+    findNetById(sourceTraceId) ?? findNetById(connectionName)
+
+  if (matchedNet) {
+    const color = matchedNet.getResolvedRatsNestColor()
+    if (color) matchedNet.ensurePcbNetRatsNestColorSynced(color)
+    return color
+  }
+
+  return undefined
+}
 
 export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
   extends NormalComponent<Props>
@@ -630,6 +667,9 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
 
     if (!routedTraces) return
 
+    const circuitTraces = this.selectAll("trace") as Trace[]
+    const nets = this.selectAll("net") as Net[]
+
     // Delete any previously created traces
     // TODO
 
@@ -642,13 +682,20 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
 
       // Create the PCB trace with the routed path
       // TODO use upsert to make sure we're not re-creating traces
+      const resolvedColor =
+        routedTrace.rats_nest_color ??
+        resolveRatsNestColorForAutoroutedTrace({
+          connectionName: routedTrace.connection_name,
+          sourceTraceId: routedTrace.connection_name,
+          traces: circuitTraces,
+          nets,
+        })
+
       const pcb_trace = db.pcb_trace.insert({
         subcircuit_id: this.subcircuit_id!,
         route: routedTrace.route as any,
         // source_trace_id: circuitTrace.source_trace_id!,
-        ...(routedTrace.rats_nest_color
-          ? { rats_nest_color: routedTrace.rats_nest_color }
-          : {}),
+        ...(resolvedColor ? { rats_nest_color: resolvedColor } : {}),
       })
       // circuitTrace.pcb_trace_id = pcb_trace.pcb_trace_id
 
@@ -675,6 +722,8 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
     if (!output_pcb_traces) return
 
     const { db } = this.root!
+    const circuitTraces = this.selectAll("trace") as Trace[]
+    const nets = this.selectAll("net") as Net[]
 
     // Delete any previously created traces
     // TODO
@@ -690,7 +739,19 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
         pcb_trace.source_trace_id = sourceTraceId
       }
 
-      db.pcb_trace.insert(pcb_trace)
+      const resolvedColor =
+        pcb_trace.rats_nest_color ??
+        resolveRatsNestColorForAutoroutedTrace({
+          sourceTraceId: pcb_trace.source_trace_id,
+          connectionName: (pcb_trace as any).connection_name,
+          traces: circuitTraces,
+          nets,
+        })
+
+      db.pcb_trace.insert({
+        ...pcb_trace,
+        ...(resolvedColor ? { rats_nest_color: resolvedColor } : {}),
+      })
     }
 
     // Create vias for layer transitions (this shouldn't be necessary, but
