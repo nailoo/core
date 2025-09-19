@@ -163,15 +163,76 @@ export class Trace
     for (const net of nets) {
       const sourceNetId = net.source_net_id
       if (!sourceNetId) continue
-      const pcbNet = this.root.db.pcb_net.getWhere?.({
-        source_net_id: sourceNetId,
-      })
-      if (!pcbNet) continue
+      const pcbNet =
+        this.root.db.pcb_net.getWhere?.({
+          source_net_id: sourceNetId,
+        }) ??
+        this.root.db.pcb_net.list?.().find(
+          (entry) => entry.source_net_id === sourceNetId,
+        )
+      if (!pcbNet) {
+        this.root.db.pcb_net.insert({
+          source_net_id: sourceNetId,
+          rats_nest_color: color,
+        } as any)
+        continue
+      }
       if (pcbNet.rats_nest_color === color) continue
       this.root.db.pcb_net.update(pcbNet.pcb_net_id, {
         rats_nest_color: color,
       })
     }
+  }
+
+  private _applyRatsNestColorToPcbTrace(color?: string): void {
+    const table = this.root?.db.pcb_trace
+    if (!table || !this.pcb_trace_id) return
+
+    const existing =
+      table.get?.(this.pcb_trace_id) ??
+      table.getWhere?.({ pcb_trace_id: this.pcb_trace_id }) ??
+      table.list?.().find((trace) => trace.pcb_trace_id === this.pcb_trace_id)
+
+    if (!existing) return
+
+    if (color) {
+      if (existing.rats_nest_color === color) return
+      table.update(this.pcb_trace_id, { rats_nest_color: color } as any)
+      return
+    }
+
+    if (existing.rats_nest_color !== undefined) {
+      table.update(this.pcb_trace_id, {
+        rats_nest_color: undefined,
+      } as any)
+    }
+  }
+
+  private _refreshRatsNestColorAssignments(): void {
+    const connectedNets = this._findConnectedNets().nets.filter(
+      (net): net is Net => Boolean(net),
+    )
+    const connectedPortsResult = this._findConnectedPorts()
+    const connectedPorts = connectedPortsResult.allPortsFound
+      ? connectedPortsResult.ports ?? []
+      : []
+
+    const resolvedColor = this._getRatsNestColorFromConnections({
+      nets: connectedNets,
+      ports: connectedPorts,
+    })
+
+    if (!resolvedColor) {
+      for (const net of connectedNets) {
+        net.ensurePcbNetRatsNestColorSynced(null)
+      }
+    }
+
+    this._applyRatsNestColorToPcbTrace(resolvedColor)
+  }
+
+  _handleConnectedNetRatsNestColorChange(): void {
+    this._refreshRatsNestColorAssignments()
   }
 
   /**
@@ -347,6 +408,22 @@ export class Trace
         pcb_port_ids: ports.map((p) => p.pcb_port_id!),
       })
     }
+  }
+
+  override onPropsChange({
+    oldProps,
+    newProps,
+    changedProps,
+  }: {
+    oldProps: z.infer<typeof traceProps>
+    newProps: z.infer<typeof traceProps>
+    changedProps: string[]
+  }): void {
+    super.onPropsChange({ oldProps, newProps, changedProps })
+
+    if (!changedProps.includes("ratsNestColor")) return
+
+    this._refreshRatsNestColorAssignments()
   }
 
   doInitialPcbManualTraceRender(): void {

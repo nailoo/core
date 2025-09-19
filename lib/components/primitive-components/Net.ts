@@ -1,4 +1,5 @@
 import { netProps } from "@tscircuit/props"
+import { z } from "zod"
 import { PrimitiveComponent } from "../base-components/PrimitiveComponent"
 import type { Port } from "./Port"
 import type { Trace } from "./Trace/Trace"
@@ -22,32 +23,60 @@ export class Net extends PrimitiveComponent<typeof netProps> {
     return this._getResolvedRatsNestColor()
   }
 
-  private _syncPcbNetRatsNestColor(colorHint?: string): void {
+  private _syncPcbNetRatsNestColor(colorHint?: string | null): void {
     const root = this.root
     if (!root?.db.pcb_net || !this.source_net_id) return
 
     const pcbNetTable = root.db.pcb_net
-    const color = colorHint ?? this._getResolvedRatsNestColor()
-    if (!color) return
-
     const existing = pcbNetTable.getWhere?.({
       source_net_id: this.source_net_id,
     })
 
-    if (existing) {
-      if (existing.rats_nest_color === color) return
-      pcbNetTable.update(existing.pcb_net_id, { rats_nest_color: color })
+    const color = colorHint ?? this._getResolvedRatsNestColor()
+
+    if (!existing) {
+      if (!color) return
+      pcbNetTable.insert({
+        source_net_id: this.source_net_id,
+        rats_nest_color: color,
+      } as any)
       return
     }
 
-    pcbNetTable.insert({
-      source_net_id: this.source_net_id,
-      rats_nest_color: color,
-    } as any)
+    if (!color) {
+      if (existing.rats_nest_color === undefined) return
+      pcbNetTable.update(existing.pcb_net_id, {
+        rats_nest_color: undefined,
+      } as any)
+      return
+    }
+
+    if (existing.rats_nest_color === color) return
+    pcbNetTable.update(existing.pcb_net_id, { rats_nest_color: color })
   }
 
-  ensurePcbNetRatsNestColorSynced(colorHint?: string): void {
+  ensurePcbNetRatsNestColorSynced(colorHint?: string | null): void {
     this._syncPcbNetRatsNestColor(colorHint)
+  }
+
+  override onPropsChange({
+    oldProps,
+    newProps,
+    changedProps,
+  }: {
+    oldProps: z.infer<typeof netProps>
+    newProps: z.infer<typeof netProps>
+    changedProps: string[]
+  }): void {
+    super.onPropsChange({ oldProps, newProps, changedProps })
+
+    if (!changedProps.includes("ratsNestColor")) return
+
+    this.ensurePcbNetRatsNestColorSynced(newProps.ratsNestColor ?? null)
+
+    for (const trace of this._getAllDirectlyConnectedTraces()) {
+      trace._handleConnectedNetRatsNestColorChange()
+    }
   }
 
   get config() {
