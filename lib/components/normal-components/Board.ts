@@ -1,4 +1,5 @@
 import { boardProps } from "@tscircuit/props"
+import type { NinePointAnchor } from "circuit-json"
 import { type Matrix, identity } from "transformation-matrix"
 import { Group } from "../primitive-components/Group/Group"
 import {
@@ -62,6 +63,40 @@ const getRoundedRectOutline = (
   return outline
 }
 
+const validBoardAnchorAlignments: NinePointAnchor[] = [
+  "top_left",
+  "top_center",
+  "top_right",
+  "center_left",
+  "center",
+  "center_right",
+  "bottom_left",
+  "bottom_center",
+  "bottom_right",
+]
+
+const getAnchorOffset = (
+  alignment: NinePointAnchor,
+  width: number,
+  height: number,
+) => {
+  const horizontalMultiplier = alignment.includes("left")
+    ? -1
+    : alignment.includes("right")
+      ? 1
+      : 0
+  const verticalMultiplier = alignment.includes("top")
+    ? 1
+    : alignment.includes("bottom")
+      ? -1
+      : 0
+
+  return {
+    dx: (width / 2) * horizontalMultiplier,
+    dy: (height / 2) * verticalMultiplier,
+  }
+}
+
 export class Board extends Group<typeof boardProps> {
   pcb_board_id: string | null = null
   _drcChecksComplete = false
@@ -85,6 +120,72 @@ export class Board extends Group<typeof boardProps> {
   get boardThickness() {
     const { _parsedProps: props } = this
     return 1.4 // TODO use prop
+  }
+
+  private _getBoardAnchorAlignment(): NinePointAnchor {
+    const alignment = (this._parsedProps as any).boardAnchorAlignment
+    if (validBoardAnchorAlignments.includes(alignment)) {
+      return alignment
+    }
+    return "center"
+  }
+
+  private _getBoardAnchorPosition(
+    fallback: { x: number; y: number },
+  ): { x: number; y: number } {
+    const props = this._parsedProps as any
+    const offsetX = props.outlineOffsetX ?? 0
+    const offsetY = props.outlineOffsetY ?? 0
+
+    const maybeNumber = (value: unknown, fallbackValue: number) =>
+      typeof value === "number" && !Number.isNaN(value)
+        ? value
+        : fallbackValue
+
+    const getBaseAnchorPosition = () => {
+      if (props.boardAnchorPosition && typeof props.boardAnchorPosition === "object") {
+        return {
+          x: maybeNumber(props.boardAnchorPosition.x, fallback.x),
+          y: maybeNumber(props.boardAnchorPosition.y, fallback.y),
+        }
+      }
+
+      if (props.boardAnchorX != null || props.boardAnchorY != null) {
+        return {
+          x: maybeNumber(props.boardAnchorX, fallback.x),
+          y: maybeNumber(props.boardAnchorY, fallback.y),
+        }
+      }
+
+      if (props.pcbX != null || props.pcbY != null) {
+        return {
+          x: maybeNumber(props.pcbX, fallback.x),
+          y: maybeNumber(props.pcbY, fallback.y),
+        }
+      }
+
+      return fallback
+    }
+
+    const baseAnchor = getBaseAnchorPosition()
+
+    return {
+      x: baseAnchor.x + offsetX,
+      y: baseAnchor.y + offsetY,
+    }
+  }
+
+  private _calculateCenterFromAnchor(
+    anchorPosition: { x: number; y: number },
+    alignment: NinePointAnchor,
+    width: number,
+    height: number,
+  ) {
+    const { dx, dy } = getAnchorOffset(alignment, width, height)
+    return {
+      x: anchorPosition.x - dx,
+      y: anchorPosition.y - dy,
+    }
   }
 
   /**
@@ -164,19 +265,27 @@ export class Board extends Group<typeof boardProps> {
     const computedHeight = hasComponents ? maxY - minY + padding * 2 : 0
 
     // Center the board around the components or use (0,0) for empty boards
-    const center = {
-      x: hasComponents
-        ? (minX + maxX) / 2 + (props.outlineOffsetX ?? 0)
-        : (props.outlineOffsetX ?? 0),
-      y: hasComponents
-        ? (minY + maxY) / 2 + (props.outlineOffsetY ?? 0)
-        : (props.outlineOffsetY ?? 0),
-    }
-
-    // Update the board dimensions, preserving any explicit dimension provided
-    // by the user while auto-calculating the missing one.
     const finalWidth = props.width ?? computedWidth
     const finalHeight = props.height ?? computedHeight
+
+    const fallbackAnchorBase = hasComponents
+      ? {
+          x: (minX + maxX) / 2,
+          y: (minY + maxY) / 2,
+        }
+      : {
+          x: props.pcbX ?? 0,
+          y: props.pcbY ?? 0,
+        }
+
+    const anchorAlignment = this._getBoardAnchorAlignment()
+    const anchorPosition = this._getBoardAnchorPosition(fallbackAnchorBase)
+    const center = this._calculateCenterFromAnchor(
+      anchorPosition,
+      anchorAlignment,
+      finalWidth,
+      finalHeight,
+    )
 
     let outline = props.outline
     if (
@@ -196,6 +305,8 @@ export class Board extends Group<typeof boardProps> {
       width: finalWidth,
       height: finalHeight,
       center,
+      anchor_alignment: anchorAlignment,
+      anchor_position: anchorPosition,
     }
 
     if (outline) {
@@ -260,9 +371,9 @@ export class Board extends Group<typeof boardProps> {
     // They will be updated in PcbBoardAutoSize phase
     let computedWidth = props.width ?? 0
     let computedHeight = props.height ?? 0
-    let center = {
-      x: (props.pcbX ?? 0) + (props.outlineOffsetX ?? 0),
-      y: (props.pcbY ?? 0) + (props.outlineOffsetY ?? 0),
+    let fallbackAnchorBase = {
+      x: props.pcbX ?? 0,
+      y: props.pcbY ?? 0,
     }
 
     // Compute width and height from outline if not provided
@@ -277,11 +388,20 @@ export class Board extends Group<typeof boardProps> {
 
       computedWidth = maxX - minX
       computedHeight = maxY - minY
-      center = {
-        x: (minX + maxX) / 2 + (props.outlineOffsetX ?? 0),
-        y: (minY + maxY) / 2 + (props.outlineOffsetY ?? 0),
+      fallbackAnchorBase = {
+        x: (minX + maxX) / 2,
+        y: (minY + maxY) / 2,
       }
     }
+
+    const anchorAlignment = this._getBoardAnchorAlignment()
+    const anchorPosition = this._getBoardAnchorPosition(fallbackAnchorBase)
+    const center = this._calculateCenterFromAnchor(
+      anchorPosition,
+      anchorAlignment,
+      computedWidth,
+      computedHeight,
+    )
 
     let outline = props.outline
     if (
@@ -310,6 +430,8 @@ export class Board extends Group<typeof boardProps> {
         y: point.y + (props.outlineOffsetY ?? 0),
       })),
       material: props.material,
+      anchor_alignment: anchorAlignment,
+      anchor_position: anchorPosition,
     })
 
     this.pcb_board_id = pcb_board.pcb_board_id!
