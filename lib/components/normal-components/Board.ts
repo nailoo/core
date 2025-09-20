@@ -6,6 +6,7 @@ import {
   checkEachPcbTraceNonOverlapping,
   checkPcbComponentsOutOfBoard,
 } from "@tscircuit/checks"
+import type { NinePointAnchor } from "circuit-json"
 import type { RenderPhase } from "../base-components/Renderable"
 import { getDescendantSubcircuitIds } from "../../utils/autorouting/getAncestorSubcircuitIds"
 
@@ -63,20 +64,10 @@ const getRoundedRectOutline = (
 }
 
 type AnchorPoint = { x: number; y: number }
-type AnchorAlignment =
-  | "top_left"
-  | "top_center"
-  | "top_right"
-  | "left_center"
-  | "center"
-  | "right_center"
-  | "bottom_left"
-  | "bottom_center"
-  | "bottom_right"
 
 const computeCenterFromAnchor = (
   anchor: AnchorPoint,
-  config: { alignment: AnchorAlignment; width: number; height: number },
+  config: { alignment: NinePointAnchor; width: number; height: number },
 ): AnchorPoint => {
   const { alignment, width, height } = config
   const halfWidth = width / 2
@@ -106,7 +97,7 @@ const computeCenterFromAnchor = (
 }
 
 const computeAutoWidthForAlignment = (
-  alignment: AnchorAlignment,
+  alignment: NinePointAnchor,
   bounds: { anchor: number; min: number; max: number },
 ) => {
   const { anchor, min, max } = bounds
@@ -132,7 +123,7 @@ const computeAutoWidthForAlignment = (
 }
 
 const computeAutoHeightForAlignment = (
-  alignment: AnchorAlignment,
+  alignment: NinePointAnchor,
   bounds: { anchor: number; min: number; max: number },
 ) => {
   const { anchor, min, max } = bounds
@@ -254,7 +245,7 @@ export class Board extends Group<typeof boardProps> {
     const padding = 2
     const outlineOffsetX = props.outlineOffsetX ?? 0
     const outlineOffsetY = props.outlineOffsetY ?? 0
-    const anchorAlignment = (props.boardAnchorAlignment ?? "center") as AnchorAlignment
+    const anchorAlignment = (props.boardAnchorAlignment ?? "center") as NinePointAnchor
     const anchorPosition = props.boardAnchorPosition
       ? {
           x: props.boardAnchorPosition.x + outlineOffsetX,
@@ -392,7 +383,7 @@ export class Board extends Group<typeof boardProps> {
     let computedHeight = props.height ?? 0
     const outlineOffsetX = props.outlineOffsetX ?? 0
     const outlineOffsetY = props.outlineOffsetY ?? 0
-    const anchorAlignment = (props.boardAnchorAlignment ?? "center") as AnchorAlignment
+    const anchorAlignment = (props.boardAnchorAlignment ?? "center") as NinePointAnchor
     const anchorPosition = props.boardAnchorPosition
       ? {
           x: props.boardAnchorPosition.x + outlineOffsetX,
