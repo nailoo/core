@@ -29,3 +29,24 @@ test("SilkscreenText rendering", () => {
 
   expect(project).toMatchPcbSnapshot(import.meta.path)
 })
+
+test("SilkscreenText inherits font size from board pcbStyle", () => {
+  const { project } = getTestFixture()
+
+  project.add(
+    <board
+      width="10mm"
+      height="10mm"
+      pcbStyle={{ silkscreenTextFontSize: 2 }}
+    >
+      <silkscreentext text="Styled Text" pcbX={0} pcbY={0} />
+    </board>,
+  )
+
+  project.render()
+
+  const silkscreenTexts = project.db.pcb_silkscreen_text.list()
+
+  expect(silkscreenTexts.length).toBe(1)
+  expect(silkscreenTexts[0].font_size).toBe(2)
+})
